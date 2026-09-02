@@ -30,7 +30,7 @@ jobs:
           cat << 'EOF' > Makefile
           CC = clang
           CFLAGS = -Wall -Werror -fPIC -Wno-pointer-to-int-cast -Wno-unused-command-line-argument -Wno-deprecated-declarations -Iinclude
-          TEST_CFLAGS = -Wall -fPIC -Wno-pointer-to-int-cast -Wno-unused-command-line-argument -Wno-deprecated-declarations -Wno-unreachable-code -Dcsd_code_directory_update=csd_update_code_directory -Iinclude
+          TEST_CFLAGS = -Wall -fPIC -Wno-pointer-to-int-cast -Wno-unused-command-line-argument -Wno-deprecated-declarations -Wno-unreachable-code -Dcsd_code_directory_update=macho_add_code_directory_blob -Dcsd_update_code_directory=macho_add_code_directory_blob -Iinclude
           LDFLAGS = -framework CoreFoundation
           
           ifeq ($(TARGET),ios)
