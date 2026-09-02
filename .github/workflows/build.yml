@@ -22,6 +22,7 @@ jobs:
       - name: Build for macOS
         run: |
           OPENSSL_PREFIX=$(brew --prefix openssl@3)
+          
           make DISABLE_TESTS=1 \
             CFLAGS="-I$OPENSSL_PREFIX/include" \
             LDFLAGS="-L$OPENSSL_PREFIX/lib -lcrypto -framework CoreFoundation"
