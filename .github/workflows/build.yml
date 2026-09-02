@@ -15,23 +15,28 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Install OpenSSL
+      - name: Install OpenSSL (macOS Build Only)
         run: |
           brew install openssl@3
 
-      - name: Patch Makefile Paths
+      - name: Patch Makefile for macOS Specifics
         run: |
           OPENSSL_PREFIX=$(brew --prefix openssl@3)
           
           sed -i '' "s|CFLAGS =|CFLAGS = -I$OPENSSL_PREFIX/include |g" Makefile
           sed -i '' "s|LDFLAGS =|LDFLAGS = -L$OPENSSL_PREFIX/lib -lcrypto -framework CoreFoundation |g" Makefile
+          
+          sed -i '' 's|$(LDFLAGS)|& -framework CoreFoundation|g' Makefile
 
       - name: Build for macOS
         run: |
           make DISABLE_TESTS=1
 
-      - name: Clean macOS Build
-        run: make clean
+      - name: Clean Build Workspace
+        run: |
+          make clean
+          
+          git checkout Makefile
 
       - name: Build for iOS
         run: |
