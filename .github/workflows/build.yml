@@ -18,18 +18,26 @@ jobs:
       - name: Install OpenSSL
         run: |
           brew install openssl@3
-          echo "CFLAGS=-I$(brew --prefix openssl@3)/include" >> $GITHUB_ENV
+
+      - name: Patch Makefile Paths
+        run: |
+          # Get Homebrew OpenSSL prefix dynamically
+          OPENSSL_PREFIX=$(brew --prefix openssl@3)
+          
+          sed -i '' "s|CFLAGS =|CFLAGS = -I$OPENSSL_PREFIX/include |g" Makefile
+          sed -i '' "s|LDFLAGS =|LDFLAGS = -L$OPENSSL_PREFIX/lib -lcrypto -framework CoreFoundation |g" Makefile
+          
+          head -n 20 Makefile
 
       - name: Build for macOS
         run: |
-          make CFLAGS="$CFLAGS" CC="clang -L$(brew --prefix openssl@3)/lib -lcrypto -framework CoreFoundation"
+          make
 
       - name: Clean macOS Build
         run: make clean
 
       - name: Build for iOS
         run: |
-          # Build standard iOS target using default iOS SDK framework rules
           make TARGET=ios
 
       - name: Upload Build Artifacts
