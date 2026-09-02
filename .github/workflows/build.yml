@@ -15,26 +15,31 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Install OpenSSL (macOS Build Only)
+      - name: Install OpenSSL
         run: |
           brew install openssl@3
 
+      - name: Patch Makefile
+        run: |
+          git checkout HEAD -- Makefile || true
+          OPENSSL_PREFIX=$(brew --prefix openssl@3)
+          sed -i '' "s|LDFLAGS =|LDFLAGS_MACOS = -L$OPENSSL_PREFIX/lib -lcrypto -framework CoreFoundation\nLDFLAGS =|g" Makefile
+          sed -i '' "s|CFLAGS =|CFLAGS_MACOS = -I$OPENSSL_PREFIX/include\nCFLAGS =|g" Makefile
+          sed -i '' 's|$(CFLAGS)|& $(CFLAGS_MACOS)|g' Makefile
+          sed -i '' 's|$(LDFLAGS)|& $(LDFLAGS_MACOS)|g' Makefile
+          sed -i '' 's|output/ios/lib/libchoma.dylib :|output/ios/lib/libchoma.dylib : LDFLAGS += -framework CoreFoundation\noutput/ios/lib/libchoma.dylib :|g' Makefile
+
       - name: Build for macOS
         run: |
-          OPENSSL_PREFIX=$(brew --prefix openssl@3)
-          
-          make DISABLE_TESTS=1 \
-            CFLAGS="-I$OPENSSL_PREFIX/include" \
-            LDFLAGS="-L$OPENSSL_PREFIX/lib -lcrypto -framework CoreFoundation"
+          make DISABLE_TESTS=1
 
-      - name: Clean Workspace Object Files
+      - name: Clean Workspace
         run: |
           make clean
 
       - name: Build for iOS
         run: |
-          make TARGET=ios DISABLE_TESTS=1 \
-            LDFLAGS="-framework CoreFoundation"
+          make TARGET=ios DISABLE_TESTS=1 CFLAGS_MACOS="" LDFLAGS_MACOS=""
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
