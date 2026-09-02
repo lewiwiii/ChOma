@@ -122,7 +122,7 @@ jobs:
           cd ..
 
       - name: Upload Build Artifacts
-        uses: actions/with-artifact@v4
+        uses: actions/upload-artifact@v4
         with:
           name: choma-all-packages
           path: release-artifacts/
