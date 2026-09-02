@@ -84,6 +84,11 @@ jobs:
         run: |
           make
 
+      - name: Backup macOS Binaries
+        run: |
+          mkdir -p macos-binaries
+          cp -r output/lib output/tests macos-binaries/ || true
+
       - name: Clean Workspace Objects
         run: |
           make clean
@@ -92,17 +97,22 @@ jobs:
         run: |
           make TARGET=ios
 
+      - name: Backup iOS Binaries
+        run: |
+          mkdir -p ios-binaries
+          cp -r output/ios/lib output/ios/tests ios-binaries/ || true
+
       - name: Package Architecture Zips
         run: |
           mkdir -p release-artifacts
           
-          cd output
-          zip -r ../release-artifacts/choma-macos.zip lib/ tests/
-          cd ../
+          cd macos-binaries
+          zip -r ../release-artifacts/choma-macos.zip .
+          cd ..
           
-          cd output/ios
-          zip -r ../../release-artifacts/choma-ios.zip lib/ tests/
-          cd ../../
+          cd ios-binaries
+          zip -r ../release-artifacts/choma-ios.zip .
+          cd ..
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
