@@ -25,7 +25,8 @@ jobs:
 
       - name: Patch Broken Source Files Globally
         run: |
-          find tests -type f -name "*.c" -exec sed -i '' 's/csd_code_directory_update/csd_update_code_directory/g' {} + || true
+          find tests -type f -name "*.c" -exec sed -i '' 's/csd_code_directory_update/update_code_directory/g' {} + || true
+          find tests -type f -name "*.c" -exec sed -i '' 's/csd_update_code_directory/update_code_directory/g' {} + || true
 
       - name: Generate Complete Makefile
         run: |
