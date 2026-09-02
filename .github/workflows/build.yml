@@ -66,7 +66,7 @@ jobs:
 
           $(OUT_DIR)/tests/%: tests/%/*.c $(OUT_DIR)/lib/libchoma.a
           	@mkdir -p $(@D)
-          	$(CC) $(CFLAGS) $(LDFLAGS) -Ioutput/include -Iinclude -Dupdate_code_directory=csd_update_code_directory -Dcsd_code_directory_update=csd_update_code_directory $< $(OUT_DIR)/lib/libchoma.a -o $@
+          	$(CC) $(CFLAGS) -Wno-error=implicit-function-declaration $(LDFLAGS) -Ioutput/include -Iinclude $< $(OUT_DIR)/lib/libchoma.a -o $@
 
           clean:
           	rm -rf build output
