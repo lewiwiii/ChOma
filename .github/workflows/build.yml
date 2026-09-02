@@ -25,20 +25,20 @@ jobs:
           
           sed -i '' "s|CFLAGS =|CFLAGS = -I$OPENSSL_PREFIX/include |g" Makefile
           sed -i '' "s|LDFLAGS =|LDFLAGS = -L$OPENSSL_PREFIX/lib -lcrypto -framework CoreFoundation |g" Makefile
-          
-          sed -i '' 's|$(LDFLAGS)|& -framework CoreFoundation|g' Makefile
 
       - name: Build for macOS
         run: |
           make DISABLE_TESTS=1
 
-      - name: Clean Build Workspace
+      - name: Clean Workspace & Reset Makefile
         run: |
           make clean
-          
           git checkout Makefile
 
       - name: Build for iOS
+        env:
+          CFLAGS: ""
+          LDFLAGS: ""
         run: |
           make TARGET=ios DISABLE_TESTS=1
 
