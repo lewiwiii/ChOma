@@ -8,41 +8,41 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  build-macos:
     runs-on: macos-latest
-
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Install OpenSSL
-        run: |
-          brew install openssl@3
+        run: brew install openssl@3
 
-      - name: Patch Makefile
+      - name: Build macOS Libraries
         run: |
-          git checkout HEAD -- Makefile || true
           OPENSSL_PREFIX=$(brew --prefix openssl@3)
-          sed -i '' "s|LDFLAGS =|LDFLAGS_MACOS = -L$OPENSSL_PREFIX/lib -lcrypto -framework CoreFoundation\nLDFLAGS =|g" Makefile
-          sed -i '' "s|CFLAGS =|CFLAGS_MACOS = -I$OPENSSL_PREFIX/include\nCFLAGS =|g" Makefile
-          sed -i '' 's|$(CFLAGS)|& $(CFLAGS_MACOS)|g' Makefile
-          sed -i '' 's|$(LDFLAGS)|& $(LDFLAGS_MACOS)|g' Makefile
-          sed -i '' 's|output/ios/lib/libchoma.dylib :|output/ios/lib/libchoma.dylib : LDFLAGS += -framework CoreFoundation\noutput/ios/lib/libchoma.dylib :|g' Makefile
+          make DISABLE_TESTS=1 \
+            CFLAGS="-I$OPENSSL_PREFIX/include" \
+            LDFLAGS="-L$OPENSSL_PREFIX/lib -lcrypto -framework CoreFoundation"
 
-      - name: Build for macOS
-        run: |
-          make DISABLE_TESTS=1
-
-      - name: Clean Workspace
-        run: |
-          make clean
-
-      - name: Build for iOS
-        run: |
-          make TARGET=ios DISABLE_TESTS=1 CFLAGS_MACOS="" LDFLAGS_MACOS=""
-
-      - name: Upload Build Artifacts
+      - name: Upload macOS Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: choma-binaries
+          name: choma-macos
+          path: output/
+
+  build-ios:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Build iOS Libraries
+        run: |
+          make TARGET=ios DISABLE_TESTS=1 \
+            LDFLAGS="-framework CoreFoundation"
+
+      - name: Upload iOS Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: choma-ios
           path: output/
