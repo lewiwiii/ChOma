@@ -23,6 +23,22 @@ jobs:
         run: |
           brew install openssl@3
 
+      - name: Auto-Discover and Patch Function Signatures
+        run: |
+          FOUND_FUNC="macho_add_code_directory_blob"
+          if grep -q "csd_update_code_directory" include/choma/*.h 2>/dev/null; then
+            FOUND_FUNC="csd_update_code_directory"
+          elif grep -q "update_code_directory" include/choma/*.h 2>/dev/null; then
+            FOUND_FUNC="update_code_directory"
+          elif grep -q "csd_code_directory_update" include/choma/*.h 2>/dev/null; then
+            FOUND_FUNC="csd_code_directory_update"
+          fi
+          
+          find tests -type f -name "*.c" -exec sed -i '' "s/csd_code_directory_update/ $FOUND_FUNC /g" {} + || true
+          find tests -type f -name "*.c" -exec sed -i '' "s/csd_update_code_directory/ $FOUND_FUNC /g" {} + || true
+          find tests -type f -name "*.c" -exec sed -i '' "s/update_code_directory/ $FOUND_FUNC /g" {} + || true
+          find tests -type f -name "*.c" -exec sed -i '' "s/macho_add_code_directory_blob/ $FOUND_FUNC /g" {} + || true
+
       - name: Generate Complete Makefile
         run: |
           OPENSSL_PREFIX=$(brew --prefix openssl@3)
@@ -36,15 +52,15 @@ jobs:
           ifeq ($(TARGET),ios)
               CFLAGS += -arch arm64 -arch arm64e -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk -miphoneos-version-min=11.0
               TEST_CFLAGS += -arch arm64 -arch arm64e -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk -miphoneos-version-min=11.0
-              TEST_LDFLAGS = -arch arm64 -arch arm64e -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk -miphoneos-version-min=11.0 external/ios/libcrypto.a -framework CoreFoundation -Wl,-ld_classic -Wl,-flat_namespace,-undefined,warning
-              LDFLAGS += -arch arm64 -arch arm64e -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk -miphoneos-version-min=11.0 external/ios/libcrypto.a -Wl,-flat_namespace,-undefined,warning
+              TEST_LDFLAGS = -arch arm64 -arch arm64e -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk -miphoneos-version-min=11.0 external/ios/libcrypto.a -framework CoreFoundation
+              LDFLAGS += -arch arm64 -arch arm64e -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk -miphoneos-version-min=11.0 external/ios/libcrypto.a
               OBJ_DIR = build/ios
               OUT_DIR = output/ios
           else
               CFLAGS += -I$(OPENSSL_PREFIX)/include -mmacosx-version-min=10.13
               TEST_CFLAGS += -I$(OPENSSL_PREFIX)/include -mmacosx-version-min=10.13
-              TEST_LDFLAGS = -L$(OPENSSL_PREFIX)/lib -lcrypto -framework CoreFoundation -Wl,-ld_classic -Wl,-flat_namespace,-undefined,warning
-              LDFLAGS += -L$(OPENSSL_PREFIX)/lib -lcrypto -mmacosx-version-min=10.13 -Wl,-flat_namespace,-undefined,warning
+              TEST_LDFLAGS = -L$(OPENSSL_PREFIX)/lib -lcrypto -framework CoreFoundation
+              LDFLAGS += -L$(OPENSSL_PREFIX)/lib -lcrypto -mmacosx-version-min=10.13
               OBJ_DIR = build
               OUT_DIR = output
           endif
@@ -63,7 +79,7 @@ jobs:
           		echo "Building test tool: $$test"; \
           		SOURCES=$$(ls tests/$$test/*.c 2>/dev/null || true); \
           		if [ ! -z "$$SOURCES" ]; then \
-          			$(CC) $(TEST_CFLAGS) $(TEST_LDFLAGS) -Wno-implicit-function-declaration -Ioutput/include -Iinclude $$SOURCES $(OUT_DIR)/lib/libchoma.a -o $(OUT_DIR)/tests/$$test; \
+          			$(CC) $(TEST_CFLAGS) $(TEST_LDFLAGS) -Ioutput/include -Iinclude $$SOURCES $(OUT_DIR)/lib/libchoma.a -o $(OUT_DIR)/tests/$$test; \
           		fi; \
           	done
 
@@ -89,6 +105,11 @@ jobs:
         run: |
           make
 
+      - name: Verify macOS Packages
+        run: |
+          echo "=== Built macOS Binaries ==="
+          ls -la output/tests/
+
       - name: Backup macOS Binaries
         run: |
           mkdir -p macos-binaries
@@ -102,6 +123,11 @@ jobs:
       - name: Build for iOS
         run: |
           make TARGET=ios
+
+      - name: Verify iOS Packages
+        run: |
+          echo "=== Built iOS Binaries ==="
+          ls -la output/ios/tests/
 
       - name: Backup iOS Binaries
         run: |
