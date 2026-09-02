@@ -75,7 +75,7 @@ jobs:
 
           $(OUT_DIR)/tests/%: tests/%/*.c $(OUT_DIR)/lib/libchoma.a
           	@mkdir -p $(@D)
-          	$(CC) $(CFLAGS) -Wno-error=implicit-function-declaration $(LDFLAGS) -Ioutput/include -Iinclude $< $(OUT_DIR)/lib/libchoma.a -o $@
+          	$(CC) $(CFLAGS) -Wno-error $(LDFLAGS) -Ioutput/include -Iinclude $< $(OUT_DIR)/lib/libchoma.a -o $@
 
           clean:
           	rm -rf build output
