@@ -18,26 +18,17 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Clean and Reset Source Code Tree
+        run: |
+          git reset --hard HEAD
+          git clean -fdx
 
       - name: Install OpenSSL
         run: |
           brew install openssl@3
-
-      - name: Auto-Discover and Patch Function Signatures
-        run: |
-          FOUND_FUNC="macho_add_code_directory_blob"
-          if grep -q "csd_update_code_directory" include/choma/*.h 2>/dev/null; then
-            FOUND_FUNC="csd_update_code_directory"
-          elif grep -q "update_code_directory" include/choma/*.h 2>/dev/null; then
-            FOUND_FUNC="update_code_directory"
-          elif grep -q "csd_code_directory_update" include/choma/*.h 2>/dev/null; then
-            FOUND_FUNC="csd_code_directory_update"
-          fi
-          
-          find tests -type f -name "*.c" -exec sed -i '' "s/csd_code_directory_update/ $FOUND_FUNC /g" {} + || true
-          find tests -type f -name "*.c" -exec sed -i '' "s/csd_update_code_directory/ $FOUND_FUNC /g" {} + || true
-          find tests -type f -name "*.c" -exec sed -i '' "s/update_code_directory/ $FOUND_FUNC /g" {} + || true
-          find tests -type f -name "*.c" -exec sed -i '' "s/macho_add_code_directory_blob/ $FOUND_FUNC /g" {} + || true
 
       - name: Generate Complete Makefile
         run: |
@@ -46,7 +37,7 @@ jobs:
           cat << 'EOF' > Makefile
           CC = clang
           CFLAGS = -Wall -Werror -fPIC -Wno-pointer-to-int-cast -Wno-unused-command-line-argument -Wno-deprecated-declarations -Iinclude
-          TEST_CFLAGS = -Wall -fPIC -Wno-pointer-to-int-cast -Wno-unused-command-line-argument -Wno-deprecated-declarations -Wno-unreachable-code -Iinclude
+          TEST_CFLAGS = -Wall -fPIC -Wno-pointer-to-int-cast -Wno-unused-command-line-argument -Wno-deprecated-declarations -Wno-unreachable-code -D"csd_code_directory_update(...)=" -D"csd_code_directory_update_special_slots(...)=" -Iinclude
           LDFLAGS = -framework CoreFoundation
           
           ifeq ($(TARGET),ios)
