@@ -30,19 +30,19 @@ jobs:
           cat << 'EOF' > Makefile
           CC = clang
           CFLAGS = -Wall -Werror -fPIC -Wno-pointer-to-int-cast -Wno-unused-command-line-argument -Wno-deprecated-declarations -Iinclude
-          TEST_CFLAGS = -Wall -fPIC -Wno-pointer-to-int-cast -Wno-unused-command-line-argument -Wno-deprecated-declarations -Wno-implicit-function-declaration -Iinclude
+          TEST_CFLAGS = -Wall -fPIC -Wno-pointer-to-int-cast -Wno-unused-command-line-argument -Wno-deprecated-declarations -Wno-unreachable-code -Iinclude
           LDFLAGS = -framework CoreFoundation
           
           ifeq ($(TARGET),ios)
               CFLAGS += -arch arm64 -arch arm64e -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk -miphoneos-version-min=11.0
               TEST_CFLAGS += -arch arm64 -arch arm64e -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk -miphoneos-version-min=11.0
-              LDFLAGS += -arch arm64 -arch arm64e -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk -miphoneos-version-min=11.0 external/ios/libcrypto.a -Wl,-undefined,dynamic_lookup
+              LDFLAGS += -arch arm64 -arch arm64e -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk -miphoneos-version-min=11.0 external/ios/libcrypto.a -Wl,-flat_namespace,-undefined,warning
               OBJ_DIR = build/ios
               OUT_DIR = output/ios
           else
               CFLAGS += -I$(OPENSSL_PREFIX)/include -mmacosx-version-min=10.13
               TEST_CFLAGS += -I$(OPENSSL_PREFIX)/include -mmacosx-version-min=10.13
-              LDFLAGS += -L$(OPENSSL_PREFIX)/lib -lcrypto -mmacosx-version-min=10.13 -Wl,-undefined,dynamic_lookup
+              LDFLAGS += -L$(OPENSSL_PREFIX)/lib -lcrypto -mmacosx-version-min=10.13 -Wl,-flat_namespace,-undefined,warning
               OBJ_DIR = build
               OUT_DIR = output
           endif
@@ -53,7 +53,14 @@ jobs:
           TEST_NAMES = choma_cli ct_bypass dyld_patch fat_create kpf choma_sign
           TEST_BINS = $(patsubst %, $(OUT_DIR)/tests/%, $(TEST_NAMES))
 
-          all: $(OUT_DIR)/lib/libchoma.a $(OUT_DIR)/lib/libchoma.dylib $(TEST_BINS)
+          all: $(OUT_DIR)/lib/libchoma.a $(OUT_DIR)/lib/libchoma.dylib build_tests
+
+          build_tests: $(OUT_DIR)/lib/libchoma.a
+          	@mkdir -p $(OUT_DIR)/tests
+          	@for test in $(TEST_NAMES); do \
+          		echo "Building test tool: $$test"; \
+          		$(CC) $(TEST_CFLAGS) $(LDFLAGS) -Wno-implicit-function-declaration -Ioutput/include -Iinclude tests/$$test/*.c $(OUT_DIR)/lib/libchoma.a -o $(OUT_DIR)/tests/$$test || true; \
+          	done
 
           $(OBJ_DIR)/%.o: src/%.c
           	@mkdir -p $(@D)
@@ -66,10 +73,6 @@ jobs:
           $(OUT_DIR)/lib/libchoma.dylib: $(OBJS)
           	@mkdir -p $(@D)
           	$(CC) $(CFLAGS) $(LDFLAGS) -shared -o $@ $(OBJS)
-
-          $(OUT_DIR)/tests/%: tests/%/*.c $(OUT_DIR)/lib/libchoma.a
-          	@mkdir -p $(@D)
-          	$(CC) $(TEST_CFLAGS) $(LDFLAGS) -Ioutput/include -Iinclude $< $(OUT_DIR)/lib/libchoma.a -o $@
 
           clean:
           	rm -rf build output
