@@ -23,15 +23,6 @@ jobs:
         run: |
           brew install openssl@3
 
-      - name: Patch Outdated Test Files
-        run: |
-          if [ -f tests/ct_bypass/main.c ]; then
-            sed -i '' 's/csd_code_directory_update(realCodeDirBlob, macho);/macho_add_code_directory_blob(macho, realCodeDirBlob);/g' tests/ct_bypass/main.c || true
-          fi
-          if [ -f tests/choma_sign/main.c ]; then
-            sed -i '' 's/csd_code_directory_update(codeDir, macho);/macho_add_code_directory_blob(macho, codeDir);/g' tests/choma_sign/main.c || true
-          fi
-
       - name: Generate Complete Makefile
         run: |
           OPENSSL_PREFIX=$(brew --prefix openssl@3)
@@ -39,15 +30,18 @@ jobs:
           cat << 'EOF' > Makefile
           CC = clang
           CFLAGS = -Wall -Werror -fPIC -Wno-pointer-to-int-cast -Wno-unused-command-line-argument -Wno-deprecated-declarations -Iinclude
+          TEST_CFLAGS = -Wall -fPIC -Wno-pointer-to-int-cast -Wno-unused-command-line-argument -Wno-deprecated-declarations -Wno-implicit-function-declaration -Iinclude
           LDFLAGS = -framework CoreFoundation
           
           ifeq ($(TARGET),ios)
               CFLAGS += -arch arm64 -arch arm64e -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk -miphoneos-version-min=11.0
+              TEST_CFLAGS += -arch arm64 -arch arm64e -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk -miphoneos-version-min=11.0
               LDFLAGS += -arch arm64 -arch arm64e -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk -miphoneos-version-min=11.0 external/ios/libcrypto.a -Wl,-undefined,dynamic_lookup
               OBJ_DIR = build/ios
               OUT_DIR = output/ios
           else
               CFLAGS += -I$(OPENSSL_PREFIX)/include -mmacosx-version-min=10.13
+              TEST_CFLAGS += -I$(OPENSSL_PREFIX)/include -mmacosx-version-min=10.13
               LDFLAGS += -L$(OPENSSL_PREFIX)/lib -lcrypto -mmacosx-version-min=10.13 -Wl,-undefined,dynamic_lookup
               OBJ_DIR = build
               OUT_DIR = output
@@ -75,7 +69,7 @@ jobs:
 
           $(OUT_DIR)/tests/%: tests/%/*.c $(OUT_DIR)/lib/libchoma.a
           	@mkdir -p $(@D)
-          	$(CC) $(CFLAGS) -Wno-error $(LDFLAGS) -Ioutput/include -Iinclude $< $(OUT_DIR)/lib/libchoma.a -o $@
+          	$(CC) $(TEST_CFLAGS) $(LDFLAGS) -Ioutput/include -Iinclude $< $(OUT_DIR)/lib/libchoma.a -o $@
 
           clean:
           	rm -rf build output
