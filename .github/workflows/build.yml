@@ -30,18 +30,20 @@ jobs:
           cat << 'EOF' > Makefile
           CC = clang
           CFLAGS = -Wall -Werror -fPIC -Wno-pointer-to-int-cast -Wno-unused-command-line-argument -Wno-deprecated-declarations -Iinclude
-          TEST_CFLAGS = -Wall -fPIC -Wno-pointer-to-int-cast -Wno-unused-command-line-argument -Wno-deprecated-declarations -Wno-unreachable-code -Wno-implicit-function-declaration -Iinclude
+          TEST_CFLAGS = -Wall -fPIC -Wno-pointer-to-int-cast -Wno-unused-command-line-argument -Wno-deprecated-declarations -Wno-unreachable-code -Iinclude
           LDFLAGS = -framework CoreFoundation
           
           ifeq ($(TARGET),ios)
               CFLAGS += -arch arm64 -arch arm64e -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk -miphoneos-version-min=11.0
               TEST_CFLAGS += -arch arm64 -arch arm64e -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk -miphoneos-version-min=11.0
+              TEST_LDFLAGS = -arch arm64 -arch arm64e -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk -miphoneos-version-min=11.0 external/ios/libcrypto.a -framework CoreFoundation -Wl,-flat_namespace,-undefined,warning
               LDFLAGS += -arch arm64 -arch arm64e -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk -miphoneos-version-min=11.0 external/ios/libcrypto.a -Wl,-flat_namespace,-undefined,warning
               OBJ_DIR = build/ios
               OUT_DIR = output/ios
           else
               CFLAGS += -I$(OPENSSL_PREFIX)/include -mmacosx-version-min=10.13
               TEST_CFLAGS += -I$(OPENSSL_PREFIX)/include -mmacosx-version-min=10.13
+              TEST_LDFLAGS = -L$(OPENSSL_PREFIX)/lib -lcrypto -framework CoreFoundation -Wl,-flat_namespace,-undefined,warning
               LDFLAGS += -L$(OPENSSL_PREFIX)/lib -lcrypto -mmacosx-version-min=10.13 -Wl,-flat_namespace,-undefined,warning
               OBJ_DIR = build
               OUT_DIR = output
@@ -61,7 +63,7 @@ jobs:
           		echo "Building test tool: $$test"; \
           		SOURCES=$$(ls tests/$$test/*.c 2>/dev/null || true); \
           		if [ ! -z "$$SOURCES" ]; then \
-          			$(CC) $(TEST_CFLAGS) $(LDFLAGS) -Ioutput/include -Iinclude $$SOURCES $(OUT_DIR)/lib/libchoma.a -o $(OUT_DIR)/tests/$$test || true; \
+          			$(CC) $(TEST_CFLAGS) $(TEST_LDFLAGS) -Wno-implicit-function-declaration -Ioutput/include -Iinclude $$SOURCES $(OUT_DIR)/lib/libchoma.a -o $(OUT_DIR)/tests/$$test; \
           		fi; \
           	done
 
