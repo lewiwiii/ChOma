@@ -23,11 +23,9 @@ jobs:
         run: |
           brew install openssl@3
 
-      - name: Patch Broken Source File
+      - name: Patch Broken Source Files Globally
         run: |
-          if [ -f tests/choma_sign/main.c ]; then
-            sed -i '' 's/csd_code_directory_update/update_code_directory/g' tests/choma_sign/main.c || true
-          fi
+          find tests -type f -name "*.c" -exec sed -i '' 's/csd_code_directory_update/update_code_directory/g' {} + || true
 
       - name: Generate Complete Makefile
         run: |
