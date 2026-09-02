@@ -23,11 +23,6 @@ jobs:
         run: |
           brew install openssl@3
 
-      - name: Patch Broken Source Files Globally
-        run: |
-          find tests -type f -name "*.c" -exec sed -i '' 's/csd_code_directory_update/update_code_directory/g' {} + || true
-          find tests -type f -name "*.c" -exec sed -i '' 's/csd_update_code_directory/update_code_directory/g' {} + || true
-
       - name: Generate Complete Makefile
         run: |
           OPENSSL_PREFIX=$(brew --prefix openssl@3)
@@ -71,7 +66,7 @@ jobs:
 
           $(OUT_DIR)/tests/%: tests/%/*.c $(OUT_DIR)/lib/libchoma.a
           	@mkdir -p $(@D)
-          	$(CC) $(CFLAGS) $(LDFLAGS) -Ioutput/include -Iinclude $< $(OUT_DIR)/lib/libchoma.a -o $@
+          	$(CC) $(CFLAGS) $(LDFLAGS) -Ioutput/include -Iinclude -Dupdate_code_directory=csd_update_code_directory -Dcsd_code_directory_update=csd_update_code_directory $< $(OUT_DIR)/lib/libchoma.a -o $@
 
           clean:
           	rm -rf build output
