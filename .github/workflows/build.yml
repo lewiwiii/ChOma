@@ -3,9 +3,13 @@ name: Build ChOma
 on:
   push:
     branches: [ "main", "master" ]
+    tags: [ "v*" ]
   pull_request:
     branches: [ "main", "master" ]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -19,7 +23,13 @@ jobs:
         run: |
           brew install openssl@3
 
-      - name: Generate Clean Multiplatform Makefile
+      - name: Patch Broken Source File
+        run: |
+          if [ -f tests/choma_sign/main.c ]; then
+            sed -i '' 's/csd_code_directory_update/update_code_directory/g' tests/choma_sign/main.c || true
+          fi
+
+      - name: Generate Complete Makefile
         run: |
           OPENSSL_PREFIX=$(brew --prefix openssl@3)
           
@@ -43,7 +53,10 @@ jobs:
           SRCS = $(wildcard src/*.c)
           OBJS = $(patsubst src/%.c, $(OBJ_DIR)/%.o, $(SRCS))
 
-          all: $(OUT_DIR)/lib/libchoma.a $(OUT_DIR)/lib/libchoma.dylib
+          TEST_NAMES = choma_cli ct_bypass dyld_patch fat_create kpf choma_sign
+          TEST_BINS = $(patsubst %, $(OUT_DIR)/tests/%, $(TEST_NAMES))
+
+          all: $(OUT_DIR)/lib/libchoma.a $(OUT_DIR)/lib/libchoma.dylib $(TEST_BINS)
 
           $(OBJ_DIR)/%.o: src/%.c
           	@mkdir -p $(@D)
@@ -57,6 +70,10 @@ jobs:
           	@mkdir -p $(@D)
           	$(CC) $(CFLAGS) $(LDFLAGS) -shared -o $@ $(OBJS)
 
+          $(OUT_DIR)/tests/%: tests/%/*.c $(OUT_DIR)/lib/libchoma.a
+          	@mkdir -p $(@D)
+          	$(CC) $(CFLAGS) $(LDFLAGS) -Ioutput/include -Iinclude $< $(OUT_DIR)/lib/libchoma.a -o $@
+
           clean:
           	rm -rf build output
           EOF
@@ -67,7 +84,7 @@ jobs:
         run: |
           make
 
-      - name: Clean Intermediate Objects
+      - name: Clean Workspace Objects
         run: |
           make clean
 
@@ -75,8 +92,30 @@ jobs:
         run: |
           make TARGET=ios
 
+      - name: Package Architecture Zips
+        run: |
+          mkdir -p release-artifacts
+          
+          cd output
+          zip -r ../release-artifacts/choma-macos.zip lib/ tests/
+          cd ../
+          
+          cd output/ios
+          zip -r ../../release-artifacts/choma-ios.zip lib/ tests/
+          cd ../../
+
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: choma-binaries
-          path: output/
+          name: choma-all-packages
+          path: release-artifacts/
+
+      - name: Deploy GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release-artifacts/choma-macos.zip
+            release-artifacts/choma-ios.zip
+          draft: false
+          prerelease: false
