@@ -8,41 +8,75 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-macos:
+  build:
     runs-on: macos-latest
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Install OpenSSL
-        run: brew install openssl@3
+        run: |
+          brew install openssl@3
 
-      - name: Build macOS Libraries
+      - name: Generate Clean Multiplatform Makefile
         run: |
           OPENSSL_PREFIX=$(brew --prefix openssl@3)
-          make DISABLE_TESTS=1 \
-            CFLAGS="-I$OPENSSL_PREFIX/include" \
-            LDFLAGS="-L$OPENSSL_PREFIX/lib -lcrypto -framework CoreFoundation"
+          
+          cat << 'EOF' > Makefile
+          CC = clang
+          CFLAGS = -Wall -Werror -fPIC -Wno-pointer-to-int-cast -Wno-unused-command-line-argument -Wno-deprecated-declarations -Iinclude
+          LDFLAGS = -framework CoreFoundation
+          
+          ifeq ($(TARGET),ios)
+              CFLAGS += -arch arm64 -arch arm64e -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk -miphoneos-version-min=11.0
+              LDFLAGS += -arch arm64 -arch arm64e -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk -miphoneos-version-min=11.0 external/ios/libcrypto.a
+              OBJ_DIR = build/ios
+              OUT_DIR = output/ios
+          else
+              CFLAGS += -I$(OPENSSL_PREFIX)/include -mmacosx-version-min=10.13
+              LDFLAGS += -L$(OPENSSL_PREFIX)/lib -lcrypto -mmacosx-version-min=10.13
+              OBJ_DIR = build
+              OUT_DIR = output
+          endif
 
-      - name: Upload macOS Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: choma-macos
-          path: output/
+          SRCS = $(wildcard src/*.c)
+          OBJS = $(patsubst src/%.c, $(OBJ_DIR)/%.o, $(SRCS))
 
-  build-ios:
-    runs-on: macos-latest
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+          all: $(OUT_DIR)/lib/libchoma.a $(OUT_DIR)/lib/libchoma.dylib
 
-      - name: Build iOS Libraries
+          $(OBJ_DIR)/%.o: src/%.c
+          	@mkdir -p $(@D)
+          	$(CC) $(CFLAGS) -c $< -o $@
+
+          $(OUT_DIR)/lib/libchoma.a: $(OBJS)
+          	@mkdir -p $(@D)
+          	libtool $(OBJS) -o $@
+
+          $(OUT_DIR)/lib/libchoma.dylib: $(OBJS)
+          	@mkdir -p $(@D)
+          	$(CC) $(CFLAGS) $(LDFLAGS) -shared -o $@ $(OBJS)
+
+          clean:
+          	rm -rf build output
+          EOF
+          
+          sed -i '' "s|\$(OPENSSL_PREFIX)|$OPENSSL_PREFIX|g" Makefile
+
+      - name: Build for macOS
         run: |
-          make TARGET=ios DISABLE_TESTS=1 \
-            LDFLAGS="-framework CoreFoundation"
+          make
 
-      - name: Upload iOS Artifacts
+      - name: Clean Intermediate Objects
+        run: |
+          make clean
+
+      - name: Build for iOS
+        run: |
+          make TARGET=ios
+
+      - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: choma-ios
+          name: choma-binaries
           path: output/
