@@ -19,28 +19,21 @@ jobs:
         run: |
           brew install openssl@3
 
-      - name: Patch Makefile for macOS Specifics
-        run: |
-          OPENSSL_PREFIX=$(brew --prefix openssl@3)
-          
-          sed -i '' "s|CFLAGS =|CFLAGS = -I$OPENSSL_PREFIX/include |g" Makefile
-          sed -i '' "s|LDFLAGS =|LDFLAGS = -L$OPENSSL_PREFIX/lib -lcrypto -framework CoreFoundation |g" Makefile
-
       - name: Build for macOS
         run: |
-          make DISABLE_TESTS=1
+          OPENSSL_PREFIX=$(brew --prefix openssl@3)
+          make DISABLE_TESTS=1 \
+            CFLAGS="-I$OPENSSL_PREFIX/include" \
+            LDFLAGS="-L$OPENSSL_PREFIX/lib -lcrypto -framework CoreFoundation"
 
-      - name: Clean Workspace & Reset Makefile
+      - name: Clean Workspace Object Files
         run: |
           make clean
-          git checkout Makefile
 
       - name: Build for iOS
-        env:
-          CFLAGS: ""
-          LDFLAGS: ""
         run: |
-          make TARGET=ios DISABLE_TESTS=1
+          make TARGET=ios DISABLE_TESTS=1 \
+            LDFLAGS="-framework CoreFoundation"
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
