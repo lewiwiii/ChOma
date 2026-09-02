@@ -34,12 +34,12 @@ jobs:
           
           ifeq ($(TARGET),ios)
               CFLAGS += -arch arm64 -arch arm64e -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk -miphoneos-version-min=11.0
-              LDFLAGS += -arch arm64 -arch arm64e -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk -miphoneos-version-min=11.0 external/ios/libcrypto.a
+              LDFLAGS += -arch arm64 -arch arm64e -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk -miphoneos-version-min=11.0 external/ios/libcrypto.a -Wl,-flat_namespace,-undefined,warning
               OBJ_DIR = build/ios
               OUT_DIR = output/ios
           else
               CFLAGS += -I$(OPENSSL_PREFIX)/include -mmacosx-version-min=10.13
-              LDFLAGS += -L$(OPENSSL_PREFIX)/lib -lcrypto -mmacosx-version-min=10.13
+              LDFLAGS += -L$(OPENSSL_PREFIX)/lib -lcrypto -mmacosx-version-min=10.13 -Wl,-flat_namespace,-undefined,warning
               OBJ_DIR = build
               OUT_DIR = output
           endif
